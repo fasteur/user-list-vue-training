@@ -1,0 +1,198 @@
+<!-- -------- USER FORM -------- -->
+<template id="user-form">
+    <div>
+        <form @submit.prevent="submitForm()">
+            <input type="text" v-model="form.name" placeholder="Ex: Florian">
+            <input type="text" v-model.number="form.age" placeholder="Ex: 28">
+
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</template>
+
+<!-- -------- USER LIST -------- -->
+<template id="user-list">
+    <div>
+        <h3>{{ title }}</h3>
+        <div v-for="user in userList">
+            <input type="checkbox" :checked="selectedUsers[user.id]" name="user.name" id="user.id"
+                @change="selectUser($event, user.id)">
+            <label for="user.name">{{ user.name }} ({{ user.age }})</label>
+            <button type="button" @click="editUser(user)">Edit</button>
+        </div>
+    </div>
+</template>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Vue</title>
+    <script type="text/javascript" src="./node_modules/vue/dist/vue.js"></script>
+</head>
+
+<body>
+    <!--  ---- CONTAINER ---- -->
+    <div id="app">
+        <h1>{{ title }}</h1>
+
+        <button @click="cleanSelected()">Unselect all</button>
+        <user-list-component :title="'Liste 1'" :user-list="userList" :selected-users="selectedUsers"
+            @selected="selectedChange($event)" @edit="addUserToEdit($event)">
+        </user-list-component>
+        <br>
+        <user-form-component :user="user" @change="changeUser($event)"></user-form-component>
+        <br>
+        <button @click="deleteUsers()">Delete user(s)</button>
+    </div>
+
+    <script type="text/javascript">
+
+        //#region ----  FORM ----
+        var UserFormComponent = Vue.component('user-form-component', {
+            template: '#user-form',
+            props: {
+                user: {
+                    type: Object,
+                    default: null
+                }
+            },
+            data() {
+                return {
+                    form: {
+                        name: '',
+                        age: null
+                    }
+                }
+            },
+            watch: {
+                user(newValue) {
+                    this.form = {
+                        name: newValue.name,
+                        age: newValue.age
+                    }
+                }
+            },
+            methods: {
+                submitForm() {
+                    this.$emit('change', {
+                        ...this.user,
+                        ...this.form
+                    })
+                    this.resetForm();
+                },
+                resetForm() {
+                    this.form = {
+                        name: '',
+                        age: null
+                    }
+                }
+            },
+
+        })
+        //#endregion
+
+        //#region ---- LIST ----
+        var UserListComponent = Vue.component('user-list-component', {
+            template: '#user-list',
+            props: {
+                title: String,
+                userList: Array,
+                selectedUsers: {
+                    type: Object,
+                    default: {}
+                }
+            },
+            methods: {
+                selectUser(event, userId) {
+                    const newSelectedUsers = { ...this.selectedUsers, [userId]: event.target.checked };
+                    this.$emit('selected', { ...newSelectedUsers });
+                },
+                editUser(user) {
+                    this.$emit('edit', { ...user })
+                }
+            },
+        });
+        //#endregion
+
+        //#region ---- CONTAINER ----
+        new Vue({
+            el: '#app',
+            components: {
+                'user-list-component': UserListComponent,
+                'user-form-component': UserFormComponent
+            },
+            data() {
+                return {
+                    title: String,
+                    userList: Array,
+                    selectedUsers: {},
+                    user: Object
+                }
+            },
+            created() {
+                this.title = 'Listes d\'utilisateurs';
+                this.userList = [
+                    { name: 'Florian', age: 28, id: this.getRndInteger() },
+                    { name: 'Gwen', age: 31, id: this.getRndInteger() },
+                    { name: 'Matthias', age: 28, id: this.getRndInteger() },
+                    { name: 'Patty', age: 29, id: this.getRndInteger() },
+                ];
+                this.user = {};
+            },
+            methods: {
+                selectedChange(newSelectedUsers) {
+                    this.selectedUsers = { ...newSelectedUsers };
+                },
+                cleanSelected() {
+                    this.selectedUsers = {};
+                },
+                changeUser(newUser) {
+                    if (!newUser || newUser && !(newUser.name || newUser.age)) return
+                    if (newUser && newUser.id) return this.editUser(newUser)
+                    if (this.isUserAlreadyExist(newUser)) return
+                    this.addUser(newUser);
+                },
+                getRndInteger() {
+                    return Math.floor(Math.random() * 100000000000000000000).toString();
+                },
+                deleteUsers() {
+                    const idsToDelete = Object.keys(this.selectedUsers).filter(v => this.selectedUsers[v]);
+                    if (!!idsToDelete.length) {
+                        this.userList = idsToDelete.reduce((acc, curr) => acc.filter(u => u.id != curr), this.userList);
+                    }
+                },
+                addUserToEdit(userToEdit) {
+                    this.user = { ...userToEdit };
+                },
+                editUser(userToEdit) {
+                    this.userList = this.userList.reduce((acc, curr) => {
+                        if (userToEdit.id === curr.id) {
+                            acc.push(userToEdit)
+                        } else {
+                            acc.push(curr)
+                        }
+                        return [...acc]
+                    }, [])
+                    this.user = {}
+                },
+                addUser(newUser) {
+                    const userToAdd = {
+                        ...newUser,
+                        id: this.getRndInteger()
+                    };
+                    this.userList.push(userToAdd)
+                },
+                isUserAlreadyExist(newUser) {
+                    const alreadyExist = !!this.userList.find((user) => user.name == newUser.name && user.age == newUser.age);
+                    return alreadyExist;
+                }
+            }
+        });
+        //#endregion
+
+    </script>
+</body>
+
+</html>
